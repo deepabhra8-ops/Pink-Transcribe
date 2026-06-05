@@ -15,7 +15,7 @@ class TopToolbar(QWidget):
     # ── Public signals ────────────────────────────────────────────────
     title_edited        = Signal(str)   # new title text
     export_requested    = Signal()
-    right_panel_toggled = Signal()
+    settings_requested  = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -31,11 +31,10 @@ class TopToolbar(QWidget):
         layout.addLayout(self._build_title_group())
         layout.addStretch()
         layout.addWidget(self._build_speakers_toggle())
-        layout.addWidget(self._build_punctuation_toggle())
         layout.addWidget(self._build_model_badge())
         layout.addWidget(self._build_lang_badge())
         layout.addWidget(self._build_export_btn())
-        layout.addWidget(self._build_drawer_toggle())
+        layout.addWidget(self._build_settings_btn())
 
     def _build_title_group(self) -> QVBoxLayout:
         group = QVBoxLayout()
@@ -76,14 +75,8 @@ class TopToolbar(QWidget):
         self.speakers_btn.setCheckable(True)
         self.speakers_btn.setChecked(True)
         self.speakers_btn.setStyleSheet(self._toggle_style())
+        self.speakers_btn.setFixedHeight(30)
         return self.speakers_btn
-
-    def _build_punctuation_toggle(self) -> QPushButton:
-        self.punctuation_btn = QPushButton("✍️ Auto-punctuation")
-        self.punctuation_btn.setCheckable(True)
-        self.punctuation_btn.setChecked(True)
-        self.punctuation_btn.setStyleSheet(self._toggle_style())
-        return self.punctuation_btn
 
     def _badge_style(self) -> str:
         return """
@@ -97,25 +90,73 @@ class TopToolbar(QWidget):
     def _build_model_badge(self) -> QLabel:
         self.model_badge = QLabel("Model: —")
         self.model_badge.setStyleSheet(self._badge_style())
+        self.model_badge.setFixedHeight(30)
         return self.model_badge
 
     def _build_lang_badge(self) -> QLabel:
         self.lang_badge = QLabel("Lang: —")
         self.lang_badge.setStyleSheet(self._badge_style())
+        self.lang_badge.setFixedHeight(30)
         return self.lang_badge
 
     def _build_export_btn(self) -> QPushButton:
         self.export_btn = QPushButton("EXPORT")
         self.export_btn.setObjectName("primaryAction")
+        self.export_btn.setFixedHeight(30)
+        self.export_btn.setStyleSheet("font-size: 11px; font-weight: bold; padding: 4px 12px;")
         self.export_btn.clicked.connect(self.export_requested.emit)
         return self.export_btn
 
-    def _build_drawer_toggle(self) -> QPushButton:
-        self.drawer_btn = QPushButton("📁")
-        self.drawer_btn.setToolTip("Toggle Right Details Drawer")
-        self.drawer_btn.setFixedSize(32, 32)
-        self.drawer_btn.clicked.connect(self.right_panel_toggled.emit)
-        return self.drawer_btn
+    def _build_settings_btn(self) -> QPushButton:
+        self.settings_btn = QPushButton()
+        self.settings_btn.setToolTip("Settings")
+        self.settings_btn.setFixedSize(32, 30)
+        self.settings_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF; border: 1px solid #E5E7EB;
+                border-radius: 6px; padding: 0;
+            }
+            QPushButton:hover {
+                border-color: #FF6FA3; background-color: #FFE4E6;
+            }
+        """)
+
+        # Draw gear icon dynamically
+        from PySide6.QtGui import QPainter, QIcon, QPixmap, QColor
+        from PySide6.QtCore import Qt, QPointF, QSize
+
+        size = 32
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        center = size / 2.0
+        r_outer = size * 0.32
+        r_inner = size * 0.15
+        tooth_w = size * 0.10
+        tooth_h = size * 0.13
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor("#4B5563"))
+
+        for i in range(8):
+            painter.save()
+            painter.translate(center, center)
+            painter.rotate(i * 45)
+            painter.drawRect(-tooth_w/2, -r_outer - tooth_h, tooth_w, tooth_h + 2)
+            painter.restore()
+
+        painter.drawEllipse(QPointF(center, center), r_outer, r_outer)
+
+        painter.setCompositionMode(QPainter.CompositionMode_Clear)
+        painter.drawEllipse(QPointF(center, center), r_inner, r_inner)
+        painter.end()
+
+        self.settings_btn.setIcon(QIcon(pixmap))
+        self.settings_btn.setIconSize(QSize(18, 18))
+        self.settings_btn.clicked.connect(self.settings_requested.emit)
+        return self.settings_btn
 
     # ── Public API ────────────────────────────────────────────────────
 
@@ -123,9 +164,6 @@ class TopToolbar(QWidget):
     def auto_detect_speakers(self) -> bool:
         return self.speakers_btn.isChecked()
 
-    @property
-    def auto_punctuation(self) -> bool:
-        return self.punctuation_btn.isChecked()
 
     def set_session_info(self, title: str, timestamp: str) -> None:
         """Update the session title and date label."""
@@ -143,10 +181,8 @@ class TopToolbar(QWidget):
         self.date_label.setVisible(not very_narrow)
         if narrow:
             self.speakers_btn.setText("👥 Speakers")
-            self.punctuation_btn.setText("✍️ Punct.")
         else:
             self.speakers_btn.setText("👥 Auto-detect Speakers")
-            self.punctuation_btn.setText("✍️ Auto-punctuation")
 
     def set_compact_badges(self, model: str, lang: str, narrow: bool) -> None:
         """Set compact or full badge text depending on the narrow flag."""

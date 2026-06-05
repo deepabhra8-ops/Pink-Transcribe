@@ -6,9 +6,10 @@ Coupling:             only emits notes_changed and close_requested; updated via 
 from typing import Optional, Set
 
 from PySide6.QtWidgets import (
-    QFrame, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QTextEdit,
+    QFrame, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QTextEdit, QWidget, QSizePolicy
 )
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, QSize, Qt
+from PySide6.QtGui import QIcon
 
 
 class DetailsPanel(QFrame):
@@ -16,12 +17,16 @@ class DetailsPanel(QFrame):
 
     # ── Public signals ────────────────────────────────────────────────
     notes_changed   = Signal(str)   # emitted on every keystroke
-    close_requested = Signal()
+    collapsed_toggled = Signal(bool)
+
+    EXPANDED_WIDTH  = 360
+    COLLAPSED_WIDTH = 80
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("rightPanel")
-        self.setFixedWidth(360)
+        self.setFixedWidth(self.EXPANDED_WIDTH)
+        self._collapsed = False
         self._build_layout()
 
     # ── Construction ──────────────────────────────────────────────────
@@ -32,23 +37,53 @@ class DetailsPanel(QFrame):
         layout.setSpacing(15)
 
         layout.addLayout(self._build_header())
-        layout.addWidget(self._build_speakers_section())
-        layout.addLayout(self._build_notes_section())
-        layout.addLayout(self._build_metadata_section())
+        
+        self.speakers_sec = self._build_speakers_section()
+        layout.addWidget(self.speakers_sec)
+
+        self.notes_container = QWidget()
+        self.notes_container.setLayout(self._build_notes_section())
+        layout.addWidget(self.notes_container)
+
+        self.metadata_container = QWidget()
+        self.metadata_container.setLayout(self._build_metadata_section())
+        layout.addWidget(self.metadata_container)
+
+        # Add dynamic vertical spacer that is only visible when collapsed
+        self.spacer_widget = QWidget()
+        self.spacer_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        self.spacer_widget.setVisible(False)
+        layout.addWidget(self.spacer_widget)
+
         layout.addStretch()
 
     def _build_header(self) -> QHBoxLayout:
         row = QHBoxLayout()
-        title = QLabel("SESSION DETAILS")
-        title.setStyleSheet(
+        row.setSpacing(6)
+
+        self.title_label = QLabel("SESSION DETAILS")
+        self.title_label.setStyleSheet(
             "font-size: 12px; font-weight: bold; color: #0F7A75; letter-spacing: 1px;"
         )
-        row.addWidget(title)
+        row.addWidget(self.title_label)
 
-        close_btn = QPushButton("✕")
-        close_btn.setFixedSize(24, 24)
-        close_btn.clicked.connect(self.close_requested.emit)
-        row.addWidget(close_btn)
+        self.header_spacer = QWidget()
+        self.header_spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        row.addWidget(self.header_spacer)
+
+        self.collapse_btn = QPushButton()
+        self.collapse_btn.setFixedSize(56, 30)
+        self.collapse_btn.setToolTip("Collapse")
+        self.collapse_btn.setStyleSheet(
+            "QPushButton { border-radius: 6px; }"
+        )
+        import os
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "collapse_icon.png")
+        if os.path.exists(icon_path):
+            self.collapse_btn.setIcon(QIcon(icon_path))
+            self.collapse_btn.setIconSize(QSize(20, 20))
+        self.collapse_btn.clicked.connect(self._on_toggle_clicked)
+        row.addWidget(self.collapse_btn)
         return row
 
     def _build_speakers_section(self) -> QLabel:
@@ -72,6 +107,7 @@ class DetailsPanel(QFrame):
 
     def _build_notes_section(self) -> QVBoxLayout:
         v = QVBoxLayout()
+        v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(4)
 
         lbl = QLabel("Session Notes:")
@@ -89,6 +125,7 @@ class DetailsPanel(QFrame):
 
     def _build_metadata_section(self) -> QVBoxLayout:
         v = QVBoxLayout()
+        v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(4)
 
         lbl = QLabel("Session Metadata:")
@@ -134,3 +171,41 @@ class DetailsPanel(QFrame):
         self.notes_edit.blockSignals(True)
         self.notes_edit.clear()
         self.notes_edit.blockSignals(False)
+
+    @property
+    def is_collapsed(self) -> bool:
+        return self._collapsed
+
+    def expand(self) -> None:
+        """Restore details panel to its full expanded width."""
+        self._collapsed = False
+        self.setFixedWidth(self.EXPANDED_WIDTH)
+        self.layout().setContentsMargins(15, 15, 15, 15)
+        self.title_label.setVisible(True)
+        self.header_spacer.setVisible(True)
+        self.speakers_sec.setVisible(True)
+        self.notes_container.setVisible(True)
+        self.metadata_container.setVisible(True)
+        self.spacer_widget.setVisible(False)
+        self.collapse_btn.setToolTip("Collapse")
+        self.collapsed_toggled.emit(False)
+
+    def collapse(self) -> None:
+        """Shrink details panel to an icon-only rail showing only the expand button."""
+        self._collapsed = True
+        self.setFixedWidth(self.COLLAPSED_WIDTH)
+        self.layout().setContentsMargins(12, 12, 12, 12)
+        self.title_label.setVisible(False)
+        self.header_spacer.setVisible(False)
+        self.speakers_sec.setVisible(False)
+        self.notes_container.setVisible(False)
+        self.metadata_container.setVisible(False)
+        self.spacer_widget.setVisible(True)
+        self.collapse_btn.setToolTip("Expand")
+        self.collapsed_toggled.emit(True)
+
+    def _on_toggle_clicked(self) -> None:
+        if self._collapsed:
+            self.expand()
+        else:
+            self.collapse()

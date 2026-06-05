@@ -105,7 +105,7 @@ def main() -> None:
     
     try:
         window = MainWindow()
-        window.show()
+        window.showMaximized()
         logger.info("Main Window initialized and presented.")
     except Exception as e:
         logger.critical(f"Failed to initialize MainWindow: {e}", exc_info=True)

@@ -131,19 +131,21 @@ class MainWindow(QMainWindow):
         self.sidebar.session_selected.connect(self._load_session)
         self.sidebar.delete_selected_requested.connect(self._delete_selected_session)
         self.sidebar.delete_all_requested.connect(self._delete_all_sessions)
+        self.sidebar.create_folder_requested.connect(self._create_new_folder)
+        self.sidebar.folder_deleted.connect(self._delete_folder)
+        self.sidebar.session_moved.connect(self._move_session)
+        self.sidebar.rename_folder_requested.connect(self._rename_folder)
+        self.sidebar.rename_session_requested.connect(self._rename_session)
         self.sidebar.connect_search(self._refresh_sessions)
 
         # Top toolbar → UI / export
         self.toolbar.title_edited.connect(self._on_title_edited)
         self.toolbar.export_requested.connect(self._handle_export)
-        self.toolbar.right_panel_toggled.connect(self._toggle_right_panel)
+        self.toolbar.settings_requested.connect(self._open_settings)
 
         # Action bar → recording controls
         self.action_bar.record_toggled.connect(self._toggle_recording)
         self.action_bar.stop_requested.connect(self._stop_recording)
-        self.action_bar.flag_requested.connect(self._mark_key_point)
-        self.action_bar.timestamp_requested.connect(self._insert_timestamp)
-        self.action_bar.settings_requested.connect(self._open_settings)
 
         # Editor → data / navigation
         self.editor.text_changed.connect(self._autosave_html)
@@ -154,11 +156,9 @@ class MainWindow(QMainWindow):
         self.editor.text_edit.timestamp_shortcut_pressed.connect(self._insert_timestamp)
         self.editor.text_edit.speaker_shortcut_pressed.connect(self._on_speaker_shortcut)
 
-        # Details panel → autosave / close
+        # Details panel → autosave / toggle
         self.details_panel.notes_changed.connect(self._autosave_notes)
-        self.details_panel.close_requested.connect(
-            lambda: self.details_panel.setVisible(False)
-        )
+        self.details_panel.collapsed_toggled.connect(self._on_right_panel_collapsed_toggled)
 
     # ═══════════════════════════════════════════════════════════════════
     # Window lifecycle
@@ -213,12 +213,12 @@ class MainWindow(QMainWindow):
             self.sidebar.expand()
             self._auto_collapsed_sidebar = False
 
-        # Right panel: auto-hide below 800 px
-        if width < 800 and self.details_panel.isVisible():
-            self.details_panel.setVisible(False)
+        # Right panel: auto-collapse below 800 px
+        if width < 800 and not self.details_panel.is_collapsed:
+            self.details_panel.collapse()
             self._auto_hidden_right_panel = True
-        elif width >= 800 and not self.details_panel.isVisible() and self._auto_hidden_right_panel:
-            self.details_panel.setVisible(True)
+        elif width >= 800 and self.details_panel.is_collapsed and self._auto_hidden_right_panel:
+            self.details_panel.expand()
             self._auto_hidden_right_panel = False
 
         # Compact toolbar & action bar text
@@ -233,10 +233,8 @@ class MainWindow(QMainWindow):
             narrow=narrow,
         )
 
-    def _toggle_right_panel(self) -> None:
-        self.details_panel.setVisible(not self.details_panel.isVisible())
-        # A user-driven show resets the auto-hide flag
-        if self.details_panel.isVisible():
+    def _on_right_panel_collapsed_toggled(self, collapsed: bool) -> None:
+        if not collapsed:
             self._auto_hidden_right_panel = False
 
     # ═══════════════════════════════════════════════════════════════════
@@ -244,11 +242,106 @@ class MainWindow(QMainWindow):
     # ═══════════════════════════════════════════════════════════════════
 
     def _refresh_sessions(self) -> None:
-        """Reload all sessions from the database and repopulate the sidebar."""
+        """Reload all folders and sessions from the database and repopulate the sidebar."""
         try:
-            self.sidebar.populate(self.db.get_all_sessions())
+            folders = self.db.get_all_folders()
+            sessions = self.db.get_all_sessions()
+            self.sidebar.populate(folders, sessions)
         except Exception as e:
             logger.error(f"Failed to refresh sessions: {e}")
+
+    def _create_new_folder(self) -> None:
+        """Prompt user for a folder name and create it in the database."""
+        name, ok = QInputDialog.getText(
+            self, "New Folder", "Enter folder name:",
+            text=""
+        )
+        if ok and name.strip():
+            name = name.strip()
+            try:
+                self.db.create_folder(name)
+                self._refresh_sessions()
+            except Exception as e:
+                QMessageBox.warning(self, "Folder Error", f"Could not create folder:\n{e}")
+
+    def _delete_folder(self, folder_id: int) -> None:
+        """Prompt confirmation and delete the folder, moving sessions to ungrouped."""
+        sessions = self.db.get_all_sessions()
+        folder_sessions = [s for s in sessions if s["folder_id"] == folder_id]
+        
+        if folder_sessions:
+            reply = QMessageBox.question(
+                self, "Delete Folder?",
+                f"This folder contains {len(folder_sessions)} session(s).\n"
+                "Are you sure you want to delete this folder?\n"
+                "The sessions will be kept and moved to the root level (Ungrouped).",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            )
+            if reply != QMessageBox.Yes:
+                return
+        else:
+            reply = QMessageBox.question(
+                self, "Delete Folder?",
+                "Are you sure you want to delete this empty folder?",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            )
+            if reply != QMessageBox.Yes:
+                return
+                
+        try:
+            self.db.delete_folder(folder_id)
+            self._refresh_sessions()
+        except Exception as e:
+            QMessageBox.critical(self, "Database Error", f"Could not delete folder:\n{e}")
+
+    def _move_session(self, session_id: int, folder_id: Optional[int]) -> None:
+        """Move a session to a folder, then refresh the sidebar."""
+        try:
+            self.db.move_session_to_folder(session_id, folder_id)
+            self._refresh_sessions()
+            self.sidebar.select_by_id(session_id)
+        except Exception as e:
+            QMessageBox.critical(self, "Database Error", f"Could not move session:\n{e}")
+
+    def _rename_folder(self, folder_id: int) -> None:
+        """Rename a folder in the database and refresh the sidebar."""
+        folders = self.db.get_all_folders()
+        folder = next((f for f in folders if f["id"] == folder_id), None)
+        if not folder:
+            return
+            
+        name, ok = QInputDialog.getText(
+            self, "Rename Folder", "Enter new folder name:",
+            text=folder["name"]
+        )
+        if ok and name.strip() and name.strip() != folder["name"]:
+            try:
+                self.db.update_folder_name(folder_id, name.strip())
+                self._refresh_sessions()
+            except Exception as e:
+                QMessageBox.warning(self, "Folder Error", f"Could not rename folder:\n{e}")
+
+    def _rename_session(self, session_id: int) -> None:
+        """Rename a session in the database and refresh the sidebar."""
+        sessions = self.db.get_all_sessions()
+        sess = next((s for s in sessions if s["id"] == session_id), None)
+        if not sess:
+            return
+            
+        name, ok = QInputDialog.getText(
+            self, "Rename Session", "Enter new session title:",
+            text=sess["title"]
+        )
+        if ok and name.strip() and name.strip() != sess["title"]:
+            try:
+                self.db.update_session_title(session_id, name.strip())
+                if session_id == self.current_session_id:
+                    date_str = datetime.fromisoformat(sess["created_at"]).strftime("%B %d, %Y • %I:%M %p")
+                    self.toolbar.set_session_info(name.strip(), date_str)
+                self._refresh_sessions()
+                self.sidebar.select_by_id(session_id)
+            except Exception as e:
+                QMessageBox.warning(self, "Session Error", f"Could not rename session:\n{e}")
 
     def _create_new_session(self) -> None:
         if self.worker and self.worker.isRunning():

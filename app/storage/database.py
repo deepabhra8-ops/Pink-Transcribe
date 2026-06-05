@@ -27,6 +27,14 @@ class DatabaseManager:
         """Initializes tables if they do not exist."""
         try:
             with self._get_connection() as conn:
+                # Folders table
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS folders (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL UNIQUE,
+                        created_at TEXT NOT NULL
+                    )
+                """)
                 # Sessions table
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS sessions (
@@ -36,7 +44,8 @@ class DatabaseManager:
                         model_size TEXT NOT NULL,
                         language TEXT NOT NULL,
                         audio_device TEXT,
-                        duration_sec REAL DEFAULT 0.0
+                        duration_sec REAL DEFAULT 0.0,
+                        folder_id INTEGER REFERENCES folders(id) ON DELETE SET NULL
                     )
                 """)
                 # Transcript segments table
@@ -66,6 +75,11 @@ class DatabaseManager:
                     conn.execute("ALTER TABLE sessions ADD COLUMN edited_notes TEXT")
                     conn.commit()
                     logger.info("Migrated sessions table: added edited_notes column.")
+                
+                if "folder_id" not in columns:
+                    conn.execute("ALTER TABLE sessions ADD COLUMN folder_id INTEGER REFERENCES folders(id) ON DELETE SET NULL")
+                    conn.commit()
+                    logger.info("Migrated sessions table: added folder_id column.")
                 
                 # Check if speaker exists in segments table, and if not, add it
                 cursor.execute("PRAGMA table_info(segments)")
@@ -216,7 +230,7 @@ class DatabaseManager:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT id, title, created_at, model_size, language, audio_device, duration_sec
+                    SELECT id, title, created_at, model_size, language, audio_device, duration_sec, folder_id
                     FROM sessions
                     ORDER BY created_at DESC
                 """)
@@ -235,4 +249,71 @@ class DatabaseManager:
                 logger.info(f"Deleted session {session_id}")
         except Exception as e:
             logger.error(f"Failed to delete session {session_id}: {e}", exc_info=True)
+            raise
+
+    # ── Folder CRUD operations ──────────────────────────────────────────
+
+    def create_folder(self, name: str) -> int:
+        """Creates a new folder for sessions and returns its ID."""
+        created_at = datetime.now().isoformat()
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO folders (name, created_at)
+                    VALUES (?, ?)
+                """, (name, created_at))
+                conn.commit()
+                folder_id = cursor.lastrowid
+                logger.info(f"Created new folder {folder_id}: '{name}'")
+                return folder_id
+        except Exception as e:
+            logger.error(f"Failed to create folder in DB: {e}", exc_info=True)
+            raise
+
+    def delete_folder(self, folder_id: int) -> None:
+        """Deletes a folder. Link in sessions table will fallback to NULL."""
+        try:
+            with self._get_connection() as conn:
+                conn.execute("DELETE FROM folders WHERE id = ?", (folder_id,))
+                conn.commit()
+                logger.info(f"Deleted folder {folder_id}")
+        except Exception as e:
+            logger.error(f"Failed to delete folder {folder_id}: {e}", exc_info=True)
+            raise
+
+    def update_folder_name(self, folder_id: int, name: str) -> None:
+        """Updates the folder name in the database."""
+        try:
+            with self._get_connection() as conn:
+                conn.execute("UPDATE folders SET name = ? WHERE id = ?", (name, folder_id))
+                conn.commit()
+                logger.info(f"Updated folder {folder_id} name to '{name}'")
+        except Exception as e:
+            logger.error(f"Failed to update folder {folder_id} name: {e}", exc_info=True)
+            raise
+
+    def get_all_folders(self) -> List[Dict[str, Any]]:
+        """Retrieves list of all folders, ordered alphabetically by name."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id, name, created_at FROM folders ORDER BY name ASC")
+                rows = cursor.fetchall()
+                return [dict(r) for r in rows]
+        except Exception as e:
+            logger.error(f"Failed to fetch folders list: {e}", exc_info=True)
+            return []
+
+    def move_session_to_folder(self, session_id: int, folder_id: Optional[int]) -> None:
+        """Assigns a session to a folder, or removes it from all folders (if folder_id is None)."""
+        try:
+            with self._get_connection() as conn:
+                conn.execute("""
+                    UPDATE sessions SET folder_id = ? WHERE id = ?
+                """, (folder_id, session_id))
+                conn.commit()
+                logger.info(f"Moved session {session_id} to folder {folder_id}")
+        except Exception as e:
+            logger.error(f"Failed to move session {session_id} to folder {folder_id}: {e}", exc_info=True)
             raise

@@ -182,8 +182,8 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
     width: 0px;
 }
 
-/* Session History List */
-QListWidget {
+/* Session History List & Tree */
+QListWidget, QTreeWidget {
     background-color: #FFFFFF;
     border: none;
     padding: 0px;
@@ -191,23 +191,27 @@ QListWidget {
     outline: none;
 }
 
-QListWidget::item {
-    padding: 12px;
+QListWidget::item, QTreeWidget::item {
+    padding: 8px 6px;
     border-bottom: 1px solid #F3F4F6;
     border-radius: 6px;
     margin-bottom: 4px;
     color: #111827;
 }
 
-QListWidget::item:hover {
+QListWidget::item:hover, QTreeWidget::item:hover {
     background-color: #F3F4F6;
 }
 
-QListWidget::item:selected {
-    background-color: #FFE4E6; /* very soft pink accent background */
-    border-left: 4px solid #FF6FA3; /* prominent primary pink highlight line */
+QListWidget::item:selected, QTreeWidget::item:selected {
+    background-color: #FFE4E6; /* soft pink accent background */
+    border-left: 4px solid #FF6FA3; /* pink highlight line */
     color: #111827;
     font-weight: 600;
+}
+
+QTreeWidget::branch {
+    background-color: transparent;
 }
 
 /* Inputs and Forms */
@@ -257,4 +261,45 @@ QComboBox QAbstractItemView {
     selection-color: #FF6FA3;
     color: #111827;
     outline: none;
+}
+
+/* Global Dialog, QMessageBox, and QInputDialog Stylesheet Styling */
+QDialog, QMessageBox, QInputDialog {
+    background-color: #FFFFFF;
+    color: #111827;
+}
+
+QDialog QLabel {
+    color: #111827;
+    background-color: transparent;
+}
+
+QDialog QLineEdit {
+    background-color: #FFFFFF;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: #111827;
+    font-size: 13px;
+}
+
+QDialog QLineEdit:focus {
+    border-color: #0F7A75;
+}
+
+QDialog QPushButton {
+    background-color: #F6F7F9;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    padding: 6px 14px;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 500;
+    min-width: 65px;
+}
+
+QDialog QPushButton:hover {
+    background-color: #FFE4E6;
+    border-color: #FF6FA3;
+    color: #FF6FA3;
 }

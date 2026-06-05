@@ -10,12 +10,12 @@ class VUMeter(QWidget):
         self.level = 0.0  # Dynamic volume level (0.0 to 1.0)
         self.peak = 0.0
         self.decay_rate = 0.05
-        self.num_bars = 25
-        
         # Minimum size settings — allow narrow layouts to compress this widget
         self.setMinimumHeight(24)
         self.setMinimumWidth(50)
-        self.setMaximumWidth(200)
+        
+        from PySide6.QtWidgets import QSizePolicy
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         
         # Timer for peak decay animation
         self.decay_timer = QTimer(self)
@@ -58,18 +58,25 @@ class VUMeter(QWidget):
         
         # Calculate sizing
         spacing = 3
-        total_spacing_width = spacing * (self.num_bars + 1)
-        bar_width = (width - total_spacing_width) / self.num_bars
+        bar_width = 6.0
+        num_bars = int((width - spacing) / (bar_width + spacing))
+        if num_bars < 5:
+            num_bars = 5
+            
         bar_height = height - 8
+        
+        # Calculate start_x to center the visual bars inside the container width
+        total_bars_width = num_bars * (bar_width + spacing) - spacing
+        start_x = (width - total_bars_width) / 2.0
         
         # Define color scheme complementing the new pink/magenta icon
         # 0.0 - 0.5: Muted Soft Pink
         # 0.5 - 0.8: Fuchsia Pink
         # 0.8 - 1.0: Deep Magenta
         
-        for i in range(self.num_bars):
-            bar_ratio = i / self.num_bars
-            x = spacing + i * (bar_width + spacing)
+        for i in range(num_bars):
+            bar_ratio = i / num_bars
+            x = start_x + i * (bar_width + spacing)
             y = 4
             
             # Determine color based on position
@@ -82,7 +89,7 @@ class VUMeter(QWidget):
                 
             # Draw active vs inactive state
             is_active = bar_ratio <= self.level
-            is_peak = abs(bar_ratio - self.peak) < (1.0 / self.num_bars)
+            is_peak = abs(bar_ratio - self.peak) < (1.0 / num_bars)
             
             if is_active:
                 # Active glowing bar
