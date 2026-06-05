@@ -33,6 +33,14 @@ class ExportDialog(QDialog):
                 padding: 6px 12px;
                 color: #111827;
             }
+            QComboBox QAbstractItemView {
+                background-color: #FFFFFF;
+                border: 1px solid #E5E7EB;
+                selection-background-color: #FFE4E6;
+                selection-color: #FF6FA3;
+                color: #111827;
+                outline: none;
+            }
             QCheckBox      { font-size: 13px; color: #111827; }
         """)
 

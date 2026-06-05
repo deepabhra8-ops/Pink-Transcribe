@@ -332,7 +332,15 @@ class TranscriptionEditor(QWidget):
                 padding: 2px 6px;
                 font-size: 12px;
                 min-height: 24px;
-                min-width: 60px;
+                min-width: 85px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #FFFFFF;
+                border: 1px solid #D1D5DB;
+                selection-background-color: #FFE4E6;
+                selection-color: #FF6FA3;
+                color: #111827;
+                outline: none;
             }
         """)
         
@@ -465,7 +473,7 @@ class TranscriptionEditor(QWidget):
         self.size_combo = QComboBox()
         self.size_combo.addItems(["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28", "36", "48"])
         self.size_combo.setCurrentText("14")
-        self.size_combo.setMinimumWidth(62)
+        self.size_combo.setMinimumWidth(85)
         self.size_combo.setToolTip("Font Size")
         self.size_combo.currentTextChanged.connect(self._change_font_size)
         
@@ -531,6 +539,14 @@ class TranscriptionEditor(QWidget):
                 font-size: 12px;
                 min-width: 110px;
                 min-height: 24px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #FFFFFF;
+                border: 1px solid #D1D5DB;
+                selection-background-color: #FFE4E6;
+                selection-color: #FF6FA3;
+                color: #111827;
+                outline: none;
             }
             QPushButton {
                 background-color: #FFFFFF;
