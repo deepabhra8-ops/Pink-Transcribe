@@ -225,7 +225,6 @@ class SidebarPanel(QFrame):
         layout.addLayout(self._build_header())
         layout.addWidget(self._build_search())
         layout.addWidget(self._build_session_tree())
-        layout.addLayout(self._build_delete_row())
 
         # Add dynamic vertical spacer that is only visible when collapsed
         self.spacer_widget = QWidget()
@@ -297,6 +296,22 @@ class SidebarPanel(QFrame):
         self.new_btn.clicked.connect(self.new_session_requested.emit)
         row.addWidget(self.new_btn)
 
+        # Delete All button (beside Create Session button)
+        self.delete_all_btn = QPushButton("🗑️")
+        self.delete_all_btn.setToolTip("Delete all sessions")
+        self.delete_all_btn.setFixedSize(32, 30)
+        self.delete_all_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF; border: 1px solid #E5E7EB;
+                color: #E02424; font-size: 13px; border-radius: 6px; padding: 0;
+            }
+            QPushButton:hover {
+                background-color: #E02424; color: #FFFFFF; border-color: #E02424;
+            }
+        """)
+        self.delete_all_btn.clicked.connect(self.delete_all_requested.emit)
+        row.addWidget(self.delete_all_btn)
+
         return row
 
     def _build_search(self) -> QLineEdit:
@@ -313,38 +328,7 @@ class SidebarPanel(QFrame):
         self.session_tree.itemCollapsed.connect(self._update_all_folder_toggles)
         return self.session_tree
 
-    def _build_delete_row(self) -> QHBoxLayout:
-        row = QHBoxLayout()
 
-        self.delete_btn = QPushButton("DELETE SELECTED")
-        self.delete_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #FFFFFF; border: 1px solid #E5E7EB;
-                color: #E02424; font-size: 10px; font-weight: bold; padding: 6px;
-            }
-            QPushButton:hover {
-                background-color: #E02424; color: #FFFFFF; border-color: #E02424;
-            }
-        """)
-        self.delete_btn.clicked.connect(self.delete_selected_requested.emit)
-        row.addWidget(self.delete_btn)
-
-        self.delete_all_btn = QPushButton("🗑️")
-        self.delete_all_btn.setToolTip("Delete all sessions")
-        self.delete_all_btn.setFixedSize(30, 30)
-        self.delete_all_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #FFFFFF; border: 1px solid #E5E7EB;
-                color: #E02424; font-size: 13px; border-radius: 6px; padding: 0;
-            }
-            QPushButton:hover {
-                background-color: #E02424; color: #FFFFFF; border-color: #E02424;
-            }
-        """)
-        self.delete_all_btn.clicked.connect(self.delete_all_requested.emit)
-        row.addWidget(self.delete_all_btn)
-
-        return row
 
     # ── Public API ────────────────────────────────────────────────────
 
@@ -476,8 +460,8 @@ class SidebarPanel(QFrame):
         """Restore sidebar to its full expanded width."""
         self._collapsed = False
         self.setFixedWidth(self.EXPANDED_WIDTH)
-        for w in (self.title_label, self.new_folder_btn, self.new_btn, self.search_input,
-                  self.session_tree, self.delete_btn, self.delete_all_btn):
+        for w in (self.title_label, self.new_folder_btn, self.new_btn, self.delete_all_btn, self.search_input,
+                  self.session_tree):
             w.setVisible(True)
         self.spacer_widget.setVisible(False)
         self.collapse_btn.setToolTip("Collapse")
@@ -486,8 +470,8 @@ class SidebarPanel(QFrame):
         """Shrink sidebar to an icon-only rail showing only the expand button."""
         self._collapsed = True
         self.setFixedWidth(self.COLLAPSED_WIDTH)
-        for w in (self.title_label, self.new_folder_btn, self.new_btn, self.search_input,
-                  self.session_tree, self.delete_btn, self.delete_all_btn):
+        for w in (self.title_label, self.new_folder_btn, self.new_btn, self.delete_all_btn, self.search_input,
+                  self.session_tree):
             w.setVisible(False)
         self.spacer_widget.setVisible(True)
         self.collapse_btn.setToolTip("Expand")
