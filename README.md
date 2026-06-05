@@ -6,7 +6,6 @@ Pink Transcribe is a production-ready, offline-first real-time desktop transcrip
 
 ## Key Features
 
-- **Real-Time Streaming**: Delivers sub-second transcription updates to the screen as you speak.
 - **Offline Inference**: Works 100% offline using local Whisper models (downloaded dynamically on first run).
 - **Relational History Explorer**: Features a session list sidebar. Previous recordings, timestamps, and transcripts are persisted in a local SQLite database.
 - **Neon VU Meter**: Visualizes active audio capture volume using a custom-painted segmented indicator.
