@@ -1,0 +1,251 @@
+/* Pink Transcribe Main Stylesheet - Modernized Specification Theme */
+
+QMainWindow {
+    background-color: #FFFFFF;
+}
+
+QWidget {
+    font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif;
+    color: #111827; /* strong text */
+    font-size: 14px;
+}
+
+/* Accessible Focus States */
+QWidget:focus {
+    border: 1px solid #0F7A75; /* secondary accent */
+}
+
+/* Control Buttons (Default states) */
+QPushButton {
+    background-color: #F6F7F9; /* surface neutral */
+    border: 1px solid #E5E7EB; /* border neutral */
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #111827;
+    outline: none;
+}
+
+QPushButton:hover {
+    background-color: #E5E7EB;
+    border-color: #6B7280;
+}
+
+QPushButton:pressed {
+    background-color: #D1D5DB;
+    transform: scale(0.98);
+}
+
+QPushButton:disabled {
+    background-color: #F9FAFB;
+    color: #9CA3AF;
+    border-color: #F3F4F6;
+}
+
+/* Primary Highlight Actions */
+QPushButton#primaryAction {
+    background-color: #FF6FA3; /* primary accent */
+    border: 1px solid #FF6FA3;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+QPushButton#primaryAction:hover {
+    background-color: #FF4A8B;
+    border-color: #FF4A8B;
+}
+
+QPushButton#primaryAction:pressed {
+    background-color: #E63C78;
+}
+
+/* Success / Affirmative Actions */
+QPushButton#successAction {
+    background-color: #0F7A75; /* secondary accent */
+    border: 1px solid #0F7A75;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+QPushButton#successAction:hover {
+    background-color: #0C615d;
+    border-color: #0C615d;
+}
+
+QPushButton#successAction:pressed {
+    background-color: #084946;
+}
+
+/* Large Circular Record Button */
+QPushButton#recordButton {
+    background-color: #FF6FA3; /* primary accent */
+    border: none;
+    color: #FFFFFF;
+    border-radius: 24px;
+    font-size: 18px;
+    padding: 0px;
+    margin: 0px;
+}
+
+QPushButton#recordButton:hover {
+    background-color: #FF4A8B;
+}
+
+QPushButton#recordButton:pressed {
+    background-color: #E63C78;
+}
+
+/* Stop Button (Circular with red outline) */
+QPushButton#stopButton {
+    background-color: #FFFFFF;
+    border: 2px solid #E02424; /* error state */
+    color: #E02424;
+    border-radius: 20px;
+    font-size: 14px;
+}
+
+QPushButton#stopButton:hover {
+    background-color: #FDF2F2;
+    border-color: #C81E1E;
+    color: #C81E1E;
+}
+
+/* Side Panels & Dividers */
+QFrame#sidePanel {
+    background-color: #F6F7F9; /* surface neutral */
+    border-right: 1px solid #E5E7EB;
+}
+
+QFrame#rightPanel {
+    background-color: #FFFFFF;
+    border-left: 1px solid #E5E7EB;
+}
+
+QFrame#editorContainer {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+}
+
+QStatusBar {
+    background-color: #F6F7F9;
+    border-top: 1px solid #E5E7EB;
+    color: #6B7280;
+    font-size: 12px;
+}
+
+QStatusBar::item {
+    border: none;
+}
+
+/* ScrollBars */
+QScrollBar:vertical {
+    border: none;
+    background-color: #F6F7F9;
+    width: 8px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #D1D5DB;
+    min-height: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #9CA3AF;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background-color: #F6F7F9;
+    height: 8px;
+    margin: 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #D1D5DB;
+    min-width: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #9CA3AF;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+/* Session History List */
+QListWidget {
+    background-color: #FFFFFF;
+    border: none;
+    padding: 0px;
+    color: #111827;
+    outline: none;
+}
+
+QListWidget::item {
+    padding: 12px;
+    border-bottom: 1px solid #F3F4F6;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    color: #111827;
+}
+
+QListWidget::item:hover {
+    background-color: #F3F4F6;
+}
+
+QListWidget::item:selected {
+    background-color: #FFE4E6; /* very soft pink accent background */
+    border-left: 4px solid #FF6FA3; /* prominent primary pink highlight line */
+    color: #111827;
+    font-weight: 600;
+}
+
+/* Inputs and Forms */
+QLineEdit, QTextEdit {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    padding: 8px;
+    color: #111827;
+}
+
+QLineEdit:focus, QTextEdit:focus {
+    border: 1px solid #0F7A75; /* active teal */
+}
+
+QGroupBox {
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-weight: 600;
+    color: #111827;
+    padding-top: 16px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+}
+
+QComboBox {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: #111827;
+}
+
+QComboBox:focus {
+    border-color: #0F7A75;
+}
