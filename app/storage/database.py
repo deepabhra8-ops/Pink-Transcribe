@@ -81,6 +81,11 @@ class DatabaseManager:
                     conn.commit()
                     logger.info("Migrated sessions table: added folder_id column.")
                 
+                if "transcription_mode" not in columns:
+                    conn.execute("ALTER TABLE sessions ADD COLUMN transcription_mode TEXT DEFAULT 'Conversation'")
+                    conn.commit()
+                    logger.info("Migrated sessions table: added transcription_mode column.")
+                
                 # Check if speaker exists in segments table, and if not, add it
                 cursor.execute("PRAGMA table_info(segments)")
                 seg_columns = [row[1] for row in cursor.fetchall()]
@@ -94,19 +99,19 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Error initializing SQLite database: {e}", exc_info=True)
 
-    def create_session(self, title: str, model_size: str, language: str, audio_device: Optional[str]) -> int:
+    def create_session(self, title: str, model_size: str, language: str, audio_device: Optional[str], folder_id: Optional[int] = None, transcription_mode: str = "Conversation") -> int:
         """Creates a new transcription session and returns its ID."""
         created_at = datetime.now().isoformat()
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT INTO sessions (title, created_at, model_size, language, audio_device)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (title, created_at, model_size, language, audio_device))
+                    INSERT INTO sessions (title, created_at, model_size, language, audio_device, folder_id, transcription_mode)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (title, created_at, model_size, language, audio_device, folder_id, transcription_mode))
                 conn.commit()
                 session_id = cursor.lastrowid
-                logger.info(f"Created new session {session_id}: '{title}'")
+                logger.info(f"Created new session {session_id}: '{title}' (folder: {folder_id}, mode: {transcription_mode})")
                 return session_id
         except Exception as e:
             logger.error(f"Failed to create session in DB: {e}", exc_info=True)
@@ -230,7 +235,7 @@ class DatabaseManager:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT id, title, created_at, model_size, language, audio_device, duration_sec, folder_id
+                    SELECT id, title, created_at, model_size, language, audio_device, duration_sec, folder_id, transcription_mode
                     FROM sessions
                     ORDER BY created_at DESC
                 """)
@@ -316,4 +321,17 @@ class DatabaseManager:
                 logger.info(f"Moved session {session_id} to folder {folder_id}")
         except Exception as e:
             logger.error(f"Failed to move session {session_id} to folder {folder_id}: {e}", exc_info=True)
+            raise
+
+    def update_session_mode(self, session_id: int, mode: str) -> None:
+        """Updates the transcription mode (Conversation / Narration) for a session."""
+        try:
+            with self._get_connection() as conn:
+                conn.execute("""
+                    UPDATE sessions SET transcription_mode = ? WHERE id = ?
+                """, (mode, session_id))
+                conn.commit()
+                logger.info(f"Updated session {session_id} transcription mode to '{mode}'")
+        except Exception as e:
+            logger.error(f"Failed to update session {session_id} transcription mode: {e}", exc_info=True)
             raise

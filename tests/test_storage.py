@@ -84,3 +84,36 @@ def test_exporter_formats():
     assert "First segment." in srt
     assert "00:00:04,100 --> 00:00:06,800" in srt
     assert "Second segment." in srt
+
+def test_database_session_transcription_mode(temp_db):
+    """Test transcription mode column and updates."""
+    # Create with default mode
+    sess_id = temp_db.create_session(
+        title="Test Default Mode",
+        model_size="tiny",
+        language="en",
+        audio_device=None
+    )
+    sessions = temp_db.get_all_sessions()
+    assert sessions[0]["transcription_mode"] == "Conversation"
+
+    # Create with specific mode
+    sess_id_2 = temp_db.create_session(
+        title="Test Narration Mode",
+        model_size="tiny",
+        language="en",
+        audio_device=None,
+        transcription_mode="Narration"
+    )
+    sessions = temp_db.get_all_sessions()
+    # sessions are ordered by created_at DESC, so the second one should be first
+    assert sessions[0]["id"] == sess_id_2
+    assert sessions[0]["transcription_mode"] == "Narration"
+    assert sessions[1]["id"] == sess_id
+    assert sessions[1]["transcription_mode"] == "Conversation"
+
+    # Update mode
+    temp_db.update_session_mode(sess_id, "Narration")
+    sessions = temp_db.get_all_sessions()
+    assert sessions[0]["transcription_mode"] == "Narration"
+    assert sessions[1]["transcription_mode"] == "Narration"

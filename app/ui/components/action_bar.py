@@ -20,11 +20,18 @@ class ActionBar(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        # Warm light gradient — same family as the editor toolbar (#FFF5F7 → #F6F7F9),
+        # so the action bar reads as part of the same design language.
         self.setStyleSheet("""
             QFrame {
-                background-color: rgba(255, 255, 255, 0.95);
-                border: 1px solid #E5E7EB;
-                border-radius: 12px;
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0   #FFF5F7,
+                    stop:0.5 #FAF9FB,
+                    stop:1   #F6F7F9
+                );
+                border: 1px solid rgba(255, 111, 163, 0.25);
+                border-radius: 14px;
             }
         """)
         self._build_layout()
@@ -32,14 +39,29 @@ class ActionBar(QFrame):
     # ── Construction ──────────────────────────────────────────────────
 
     def _build_layout(self) -> None:
+        from PySide6.QtWidgets import QFrame as _QFrame
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 4, 8, 4)
-        layout.setSpacing(8)
+        layout.setContentsMargins(12, 6, 14, 6)
+        layout.setSpacing(6)
 
-        layout.addWidget(self._build_record_btn(), stretch=0)
-        layout.addWidget(self._build_stop_btn(), stretch=0)
+        # ── Button cluster (record / stop / punctuation) ───────────────
+        layout.addWidget(self._build_record_btn(),      stretch=0)
+        layout.addWidget(self._build_stop_btn(),        stretch=0)
         layout.addWidget(self._build_punctuation_btn(), stretch=0)
-        layout.addWidget(self._build_vu_meter(), stretch=1)
+
+        # Thin vertical divider between button cluster and VU meter
+        divider = _QFrame()
+        divider.setFrameShape(_QFrame.VLine)
+        divider.setFixedWidth(1)
+        divider.setStyleSheet(
+            "background-color: rgba(255, 111, 163, 0.20); margin: 8px 4px;"
+        )
+        layout.addWidget(divider, stretch=0)
+
+        # ── VU meter fills remaining space ────────────────────────────
+        layout.addWidget(self._build_vu_meter(),  stretch=1)
+
+        # ── Timer badge ───────────────────────────────────────────────
         layout.addWidget(self._build_timer_label(), stretch=0)
 
     def _build_record_btn(self) -> QPushButton:
@@ -63,11 +85,14 @@ class ActionBar(QFrame):
             QPushButton#recordButton {
                 background-color: transparent;
                 border: none;
+                border-radius: 24px;
                 padding: 0px;
             }
             QPushButton#recordButton:hover {
-                background-color: rgba(224, 36, 36, 0.1);
-                border-radius: 24px;
+                background-color: rgba(255, 111, 163, 0.12);
+            }
+            QPushButton#recordButton:pressed {
+                background-color: rgba(255, 111, 163, 0.22);
             }
         """)
         self.record_btn.clicked.connect(self.record_toggled.emit)
@@ -94,11 +119,14 @@ class ActionBar(QFrame):
             QPushButton#stopButton {
                 background-color: transparent;
                 border: none;
+                border-radius: 24px;
                 padding: 0px;
             }
             QPushButton#stopButton:hover {
-                background-color: rgba(224, 36, 36, 0.1);
-                border-radius: 24px;
+                background-color: rgba(224, 36, 36, 0.10);
+            }
+            QPushButton#stopButton:pressed {
+                background-color: rgba(224, 36, 36, 0.20);
             }
         """)
         self.stop_btn.clicked.connect(self.stop_requested.emit)
@@ -112,7 +140,6 @@ class ActionBar(QFrame):
         self.punctuation_btn.setChecked(True)
         self.punctuation_btn.setToolTip("Auto-punctuation")
         
-        # Resolve path to Icons/Gemini_Generated_Image_foyfezfoyfezfoyf.png
         import os
         from PySide6.QtGui import QIcon
         from PySide6.QtCore import QSize
@@ -126,21 +153,24 @@ class ActionBar(QFrame):
         self.punctuation_btn.setStyleSheet("""
             QPushButton#punctuationButton {
                 background-color: #FFFFFF;
-                border: 2px solid #E5E7EB;
-                border-radius: 8px;
+                border: 1.5px solid #E9D8E4;
+                border-radius: 10px;
                 padding: 0px;
             }
             QPushButton#punctuationButton:hover {
-                border-color: #FF6FA3;
                 background-color: #FFE4E6;
+                border-color: #FFADC5;
             }
             QPushButton#punctuationButton:checked {
                 background-color: #FFE4E6;
-                border-color: #FF6FA3;
+                border: 1.5px solid #FF6FA3;
             }
             QPushButton#punctuationButton:checked:hover {
-                background-color: #FFCCD5;
+                background-color: #FFCCD8;
                 border-color: #FF4A8B;
+            }
+            QPushButton#punctuationButton:pressed {
+                background-color: #FFCCD8;
             }
         """)
         return self.punctuation_btn
@@ -151,10 +181,20 @@ class ActionBar(QFrame):
 
     def _build_timer_label(self) -> QLabel:
         self.timer_label = QLabel("00:00")
-        self.timer_label.setStyleSheet(
-            "font-family: monospace; font-size: 14px; font-weight: bold; color: #FF6FA3; margin: 0; padding: 0 4px;"
-        )
-        from PySide6.QtWidgets import QSizePolicy
+        # Pill-shaped monospace badge — light pink tint, brand pink text
+        self.timer_label.setStyleSheet("""
+            QLabel {
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 13px;
+                font-weight: bold;
+                color: #FF6FA3;
+                background-color: rgba(255, 111, 163, 0.10);
+                border: 1px solid rgba(255, 111, 163, 0.25);
+                border-radius: 8px;
+                padding: 2px 10px;
+                letter-spacing: 1px;
+            }
+        """)
         self.timer_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         return self.timer_label
 

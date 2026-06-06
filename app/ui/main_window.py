@@ -128,9 +128,9 @@ class MainWindow(QMainWindow):
 
         # Sidebar → session management
         self.sidebar.new_session_requested.connect(self._create_new_session)
+        self.sidebar.new_session_in_folder_requested.connect(self._create_new_session)
         self.sidebar.session_selected.connect(self._load_session)
         self.sidebar.delete_selected_requested.connect(self._delete_selected_session)
-        self.sidebar.delete_all_requested.connect(self._delete_all_sessions)
         self.sidebar.create_folder_requested.connect(self._create_new_folder)
         self.sidebar.folder_deleted.connect(self._delete_folder)
         self.sidebar.session_moved.connect(self._move_session)
@@ -140,6 +140,7 @@ class MainWindow(QMainWindow):
 
         # Top toolbar → UI / export
         self.toolbar.title_edited.connect(self._on_title_edited)
+        self.toolbar.mode_changed.connect(self._on_mode_changed)
         self.toolbar.export_requested.connect(self._handle_export)
         self.toolbar.settings_requested.connect(self._open_settings)
 
@@ -343,16 +344,19 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.warning(self, "Session Error", f"Could not rename session:\n{e}")
 
-    def _create_new_session(self) -> None:
+    def _create_new_session(self, folder_id: Optional[int] = None) -> None:
         if self.worker and self.worker.isRunning():
             self._stop_recording()
         title = f"Session {datetime.now().strftime('%m-%d %H:%M')}"
         try:
+            transcription_mode = self.toolbar.transcription_mode
             self.current_session_id = self.db.create_session(
                 title=title,
                 model_size=self.settings.model_size,
                 language=self.settings.language,
                 audio_device=self.settings.audio_device,
+                folder_id=folder_id,
+                transcription_mode=transcription_mode,
             )
             self.active_segments  = []
             self.session_duration = 0.0
@@ -362,7 +366,7 @@ class MainWindow(QMainWindow):
             self._refresh_sessions()
             self.sidebar.select_by_id(self.current_session_id)
             self._sync_details_panel()
-            logger.info(f"Created new session {self.current_session_id}.")
+            logger.info(f"Created new session {self.current_session_id} in folder {folder_id}.")
         except Exception as e:
             QMessageBox.critical(self, "Database Error", f"Could not create session:\n{e}")
 
@@ -388,6 +392,11 @@ class MainWindow(QMainWindow):
 
             self.current_session_id = session_id
             self.session_duration   = sess["duration_sec"]
+
+            # Load transcription mode
+            transcription_mode = sess.get("transcription_mode", "Conversation")
+            self.toolbar.set_transcription_mode(transcription_mode)
+            self.editor.text_edit.transcription_mode = transcription_mode
 
             date_str = datetime.fromisoformat(sess["created_at"]).strftime("%B %d, %Y • %I:%M %p")
             self.toolbar.set_session_info(sess["title"], date_str)
@@ -605,6 +614,17 @@ class MainWindow(QMainWindow):
                 self.sidebar.select_by_id(self.current_session_id)
             except Exception as e:
                 logger.error(f"Title update failed: {e}")
+
+    @Slot(str)
+    def _on_mode_changed(self, mode: str) -> None:
+        self.editor.text_edit.transcription_mode = mode
+        self.editor.text_edit.render_transcript()
+        if self.current_session_id:
+            try:
+                self.db.update_session_mode(self.current_session_id, mode)
+                self._sync_details_panel()
+            except Exception as e:
+                logger.error(f"Failed to update session mode: {e}")
 
     @Slot(float)
     def _on_seek(self, seconds: float) -> None:

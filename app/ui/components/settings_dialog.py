@@ -15,10 +15,10 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.settings = settings
         
-        self.setWindowTitle("Pink Transcribe Settings")
+        self.setWindowTitle("Settings")
         self.setModal(True)
-        self.resize(420, 360)
-        self.setStyleSheet("background-color: #fff0f3; color: #2b2d42;")
+        self.resize(420, 380)
+        self.setStyleSheet("background-color: #FFFFFF; color: #374151;")
         
         # Build UI layout
         self._init_ui()
@@ -32,7 +32,7 @@ class SettingsDialog(QDialog):
         # Title
         title_label = QLabel("SYSTEM CONFIGURATION")
         title_label.setStyleSheet(
-            "font-size: 14px; font-weight: bold; color: #ff4a7d; letter-spacing: 2px;"
+            "font-size: 13px; font-weight: bold; color: #0F7A75; letter-spacing: 1.5px;"
         )
         layout.addWidget(title_label)
         
@@ -66,10 +66,10 @@ class SettingsDialog(QDialog):
         self.gpu_label = QLabel()
         if rec_dev == "cuda":
             self.gpu_label.setText("GPU Acceleration Available")
-            self.gpu_label.setStyleSheet("color: #2a9d8f; font-size: 10px; font-weight: bold;")
+            self.gpu_label.setStyleSheet("color: #0F7A75; font-size: 10px; font-weight: bold;")
         else:
             self.gpu_label.setText("No CUDA GPU detected (CPU mode forced)")
-            self.gpu_label.setStyleSheet("color: #e76f51; font-size: 10px; font-weight: bold;")
+            self.gpu_label.setStyleSheet("color: #E02424; font-size: 10px; font-weight: bold;")
             
         device_layout = QVBoxLayout()
         device_layout.addWidget(self.device_combo)
@@ -128,64 +128,81 @@ class SettingsDialog(QDialog):
         # Style all ComboBoxes and Inputs
         self.setStyleSheet("""
             QDialog {
-                background-color: #fff0f3;
-                border: 1px solid #ffe5ec;
+                background-color: #FFFFFF;
+                border: 1px solid #EAD8DD;
             }
             QLabel {
-                font-family: 'Inter', 'Segoe UI', Arial;
+                font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
                 font-size: 12px;
-                color: #2b2d42;
+                color: #374151;
             }
             QComboBox, QSpinBox {
-                background-color: #ffffff;
-                border: 1px solid #ffe5ec;
-                border-radius: 4px;
-                padding: 4px 8px;
-                color: #2b2d42;
-                font-family: 'Inter', 'Segoe UI', Arial;
-                min-width: 150px;
+                background-color: #FFFFFF;
+                border: 1.5px solid #EAD8DD;
+                border-radius: 6px;
+                padding: 5px 24px 5px 8px;
+                color: #111827;
+                font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+                min-width: 160px;
             }
             QComboBox:hover, QSpinBox:hover {
-                border: 1px solid #ff477e;
+                border-color: #FF6FA3;
+            }
+            QComboBox:focus, QSpinBox:focus {
+                border-color: #FF6FA3;
             }
             QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
                 border: none;
             }
+            QComboBox::down-arrow {
+                image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2QjcyODAiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjYgOSAxMiAxNSAxOCA5Ij48L3BvbHlsaW5lPjwvc3ZnPg==");
+                width: 10px;
+                height: 10px;
+            }
             QComboBox QAbstractItemView {
-                background-color: #ffffff;
-                border: 1px solid #ffe5ec;
-                selection-background-color: #ff477e;
-                selection-color: #ffffff;
-                color: #2b2d42;
+                background-color: #FFFFFF;
+                border: 1px solid #EAD8DD;
+                border-radius: 8px;
+                padding: 4px;
+                selection-background-color: #FFE4E6;
+                selection-color: #FF6FA3;
+                color: #111827;
+                outline: none;
             }
             QSlider::groove:horizontal {
-                height: 4px;
-                background: #ffccd5;
-                border-radius: 2px;
+                height: 6px;
+                background: #FFE4E6;
+                border-radius: 3px;
             }
             QSlider::handle:horizontal {
-                background: #ff477e;
+                background: #FF6FA3;
                 width: 14px;
                 height: 14px;
-                margin-top: -5px;
+                margin-top: -4px;
                 border-radius: 7px;
             }
             QSlider::handle:horizontal:hover {
-                background: #ff0055;
+                background: #FF4A8B;
             }
             QCheckBox {
-                color: #2b2d42;
+                color: #374151;
+                font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+                font-size: 12px;
             }
             QCheckBox::indicator {
                 width: 16px;
                 height: 16px;
                 background-color: #ffffff;
-                border: 1px solid #ffe5ec;
-                border-radius: 3px;
+                border: 1.5px solid #EAD8DD;
+                border-radius: 4px;
             }
             QCheckBox::indicator:checked {
-                background-color: #ff477e;
-                border-color: #ff477e;
+                background-color: #FF6FA3;
+                border-color: #FF6FA3;
+                image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMiIgaGVpZ2h0PSIxMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSIyMCA2IDkgMTcgNCAxMiI+PC9wb2x5bGluZT48L3N2Zz4=");
             }
         """)
         
@@ -198,16 +215,19 @@ class SettingsDialog(QDialog):
         self.cancel_btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
-                border: 1px solid #ffe5ec;
-                color: #8d99ae;
-                padding: 6px 16px;
-                border-radius: 4px;
+                border: 1px solid #EAD8DD;
+                color: #6B7280;
+                padding: 6px 18px;
+                border-radius: 15px;
                 font-weight: bold;
                 font-size: 11px;
             }
             QPushButton:hover {
-                background-color: #ffe5ec;
-                color: #2b2d42;
+                background-color: #F3F4F6;
+                color: #374151;
+            }
+            QPushButton:pressed {
+                background-color: #E5E7EB;
             }
         """)
         
@@ -215,19 +235,21 @@ class SettingsDialog(QDialog):
         self.save_btn.clicked.connect(self._save_settings)
         self.save_btn.setStyleSheet("""
             QPushButton {
-                background-color: #ff477e;
-                border: none;
+                background-color: #FF6FA3;
+                border: 1px solid #FF6FA3;
                 color: #ffffff;
-                padding: 6px 16px;
-                border-radius: 4px;
+                padding: 6px 18px;
+                border-radius: 15px;
                 font-weight: bold;
                 font-size: 11px;
             }
             QPushButton:hover {
-                background-color: #ff0055;
+                background-color: #FF4A8B;
+                border-color: #FF4A8B;
             }
             QPushButton:pressed {
-                background-color: #c9184a;
+                background-color: #E63C78;
+                border-color: #E63C78;
             }
         """)
         

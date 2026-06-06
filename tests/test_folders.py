@@ -82,3 +82,20 @@ def test_folder_deletion_cascade_safety(temp_db):
     assert len(sessions) == 1
     assert sessions[0]["title"] == "Old Session"
     assert sessions[0]["folder_id"] is None
+
+def test_create_session_with_folder(temp_db):
+    """Test creating a session directly with a folder_id."""
+    fid = temp_db.create_folder("Work")
+    
+    sid = temp_db.create_session(
+        title="Direct Session",
+        model_size="base",
+        language="en",
+        audio_device=None,
+        folder_id=fid
+    )
+    
+    sessions = temp_db.get_all_sessions()
+    assert len(sessions) == 1
+    assert sessions[0]["id"] == sid
+    assert sessions[0]["folder_id"] == fid

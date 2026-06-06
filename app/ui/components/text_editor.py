@@ -39,6 +39,7 @@ class TranscriptionTextEdit(QTextEdit):
         """)
         
         self.show_timestamps = True
+        self.transcription_mode = "Conversation"
         self.segments: List[Dict[str, Any]] = []
         self.partial_text = ""
         self._is_programmatic = False
@@ -106,105 +107,159 @@ class TranscriptionTextEdit(QTextEdit):
         
         html_parts = []
         
-        # Render finalized segments
-        for seg in self.segments:
-            text = seg["text"].strip()
-            if not text:
-                continue
-                
-            raw_spk = seg.get("speaker", "Speaker 1")
-            
-            # 1. Apply Speaker Filter
-            if self.filter_speaker != "All Speakers" and raw_spk != self.filter_speaker:
-                continue
-                
-            # 2. Apply Tag Filter / Review Mode
-            seg_tag = seg.get("tag", None)
-            if self.review_mode:
-                if not seg_tag:
+        if self.transcription_mode == "Narration":
+            texts = []
+            for seg in self.segments:
+                text = seg["text"].strip()
+                if not text:
                     continue
-            elif self.filter_tag != "All Tags" and seg_tag != self.filter_tag:
-                continue
                 
-            # 3. Apply Regex/Search Query
-            if self.search_query:
-                try:
-                    if not re.search(self.search_query, text, re.IGNORECASE):
+                # Apply filters
+                # 1. Apply Speaker Filter
+                raw_spk = seg.get("speaker", "Speaker 1")
+                if self.filter_speaker != "All Speakers" and raw_spk != self.filter_speaker:
+                    continue
+                    
+                # 2. Apply Tag Filter / Review Mode
+                seg_tag = seg.get("tag", None)
+                if self.review_mode:
+                    if not seg_tag:
                         continue
-                except re.error:
-                    # Fallback to standard literal containment check
-                    if self.search_query.lower() not in text.lower():
+                elif self.filter_tag != "All Tags" and seg_tag != self.filter_tag:
+                    continue
+                    
+                # 3. Apply Regex/Search Query
+                if self.search_query:
+                    try:
+                        if not re.search(self.search_query, text, re.IGNORECASE):
+                            continue
+                    except re.error:
+                        if self.search_query.lower() not in text.lower():
+                            continue
+                            
+                texts.append(text)
+            
+            full_paragraph_text = " ".join(texts)
+            
+            partial_html = ""
+            if self.partial_text.strip():
+                p_text = self.partial_text.strip()
+                partial_html = f' <span style="color: #9CA3AF; font-style: italic;">{p_text}...</span>'
+                
+            if full_paragraph_text or partial_html:
+                line = (
+                    f'<div style="color: #111827; font-size: 15px; line-height: 1.6; padding: 10px 0px;">'
+                    f'  {full_paragraph_text}{partial_html}'
+                    f'</div>'
+                )
+                html_parts.append(line)
+        else:
+            # Render finalized segments for Conversation
+            for seg in self.segments:
+                text = seg["text"].strip()
+                if not text:
+                    continue
+                    
+                raw_spk = seg.get("speaker", "Speaker 1")
+                
+                # 1. Apply Speaker Filter
+                if self.filter_speaker != "All Speakers" and raw_spk != self.filter_speaker:
+                    continue
+                    
+                # 2. Apply Tag Filter / Review Mode
+                seg_tag = seg.get("tag", None)
+                if self.review_mode:
+                    if not seg_tag:
                         continue
-            
-            # Map speaker to colors matching visual brief
-            if raw_spk == "Speaker 1":
-                spk_color = "#FF6FA3"
-                spk_bg = "#FFE4E6"
-            elif raw_spk == "Speaker 2":
-                spk_color = "#0F7A75"
-                spk_bg = "#CCFBF1"
-            elif raw_spk == "Speaker 3":
-                spk_color = "#0284C7"
-                spk_bg = "#E0F2FE"
-            else:
-                spk_color = "#7C3AED"
-                spk_bg = "#F3E8FF"
-
-            start_time = seg.get("start_time", 0.0)
-            t_str = self.format_time(start_time)
-            
-            # Optional timestamp display
-            ts_html = ""
-            if self.show_timestamps:
-                ts_html = (
-                    f'<span style="font-family: monospace; font-size: 13px; font-weight: bold; margin-right: 12px;">'
-                    f'  <a href="seek://{start_time}" style="color: #6B7280; text-decoration: none;">{t_str}</a>'
-                    f'</span>'
+                elif self.filter_tag != "All Tags" and seg_tag != self.filter_tag:
+                    continue
+                    
+                # 3. Apply Regex/Search Query
+                if self.search_query:
+                    try:
+                        if not re.search(self.search_query, text, re.IGNORECASE):
+                            continue
+                    except re.error:
+                        if self.search_query.lower() not in text.lower():
+                            continue
+                
+                # Map speaker to colors matching visual brief
+                spk_badge_html = ""
+                if raw_spk == "Speaker 1":
+                    spk_color = "#FF6FA3"
+                    spk_bg = "#FFE4E6"
+                elif raw_spk == "Speaker 2":
+                    spk_color = "#0F7A75"
+                    spk_bg = "#CCFBF1"
+                elif raw_spk == "Speaker 3":
+                    spk_color = "#0284C7"
+                    spk_bg = "#E0F2FE"
+                else:
+                    spk_color = "#7C3AED"
+                    spk_bg = "#F3E8FF"
+                spk_badge_html = (
+                    f'  <span style="background-color: {spk_bg}; color: {spk_color}; font-size: 11px; font-weight: 600; '
+                    f'    padding: 2px 8px; border-radius: 12px; margin-right: 8px;">'
+                    f'    <a href="speaker://{raw_spk}" style="color: {spk_color}; text-decoration: none;">{raw_spk}</a>'
+                    f'  </span>'
                 )
 
-            # Optional tag badge display
-            tag_badge = ""
-            if seg_tag:
-                tag_badge = f' <span style="background-color: #FEF3C7; color: #D97706; font-size: 11px; padding: 1px 4px; border-radius: 4px; font-weight: bold;">{seg_tag}</span>'
+                start_time = seg.get("start_time", 0.0)
+                t_str = self.format_time(start_time)
+                
+                # Optional timestamp display
+                ts_html = ""
+                if self.show_timestamps:
+                    ts_html = (
+                        f'<span style="font-family: monospace; font-size: 13px; font-weight: bold; margin-right: 12px;">'
+                        f'  <a href="seek://{start_time}" style="color: #6B7280; text-decoration: none;">{t_str}</a>'
+                        f'</span>'
+                    )
 
-            line = (
-                f'<div style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #E5E7EB;">'
-                f'  {ts_html}'
-                f'  <span style="background-color: {spk_bg}; color: {spk_color}; font-size: 11px; font-weight: 600; '
-                f'    padding: 2px 8px; border-radius: 12px; margin-right: 8px;">'
-                f'    <a href="speaker://{raw_spk}" style="color: {spk_color}; text-decoration: none;">{raw_spk}</a>'
-                f'  </span>'
-                f'  {tag_badge}'
-                f'  <div style="margin-top: 6px; color: #111827; font-size: 15px;">{text}</div>'
-                f'</div>'
-            )
-            html_parts.append(line)
+                # Optional tag badge display
+                tag_badge = ""
+                if seg_tag:
+                    tag_badge = f' <span style="background-color: #FEF3C7; color: #D97706; font-size: 11px; padding: 1px 4px; border-radius: 4px; font-weight: bold;">{seg_tag}</span>'
 
-        # Render active partial text
-        if self.partial_text.strip():
-            p_text = self.partial_text.strip()
-            offset = self.segments[-1]["end_time"] if self.segments else 0.0
-            t_str = self.format_time(offset)
-            
-            ts_html = ""
-            if self.show_timestamps:
-                ts_html = (
-                    f'<span style="font-family: monospace; font-size: 13px; font-style: italic; color: #9CA3AF; margin-right: 12px;">'
-                    f'  {t_str}'
-                    f'</span>'
+                line = (
+                    f'<div style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #E5E7EB;">'
+                    f'  {ts_html}'
+                    f'  {spk_badge_html}'
+                    f'  {tag_badge}'
+                    f'  <div style="margin-top: 6px; color: #111827; font-size: 15px;">{text}</div>'
+                    f'</div>'
+                )
+                html_parts.append(line)
+
+            # Render active partial text for Conversation
+            if self.partial_text.strip():
+                p_text = self.partial_text.strip()
+                offset = self.segments[-1]["end_time"] if self.segments else 0.0
+                t_str = self.format_time(offset)
+                
+                ts_html = ""
+                if self.show_timestamps:
+                    ts_html = (
+                        f'<span style="font-family: monospace; font-size: 13px; font-style: italic; color: #9CA3AF; margin-right: 12px;">'
+                        f'  {t_str}'
+                        f'</span>'
+                    )
+
+                partial_spk_badge = (
+                    f'  <span style="background-color: #F3F4F6; color: #9CA3AF; font-size: 11px; font-weight: 600; '
+                    f'    padding: 2px 8px; border-radius: 12px; margin-right: 8px;">'
+                    f'    Speaker ?'
+                    f'  </span>'
                 )
 
-            partial_line = (
-                f'<div style="margin-bottom: 16px; padding-bottom: 12px;">'
-                f'  {ts_html}'
-                f'  <span style="background-color: #F3F4F6; color: #9CA3AF; font-size: 11px; font-weight: 600; '
-                f'    padding: 2px 8px; border-radius: 12px; margin-right: 8px;">'
-                f'    Speaker ?'
-                f'  </span>'
-                f'  <div style="margin-top: 6px; color: #9CA3AF; font-style: italic; font-size: 15px;">{p_text}...</div>'
-                f'</div>'
-            )
-            html_parts.append(partial_line)
+                partial_line = (
+                    f'<div style="margin-bottom: 16px; padding-bottom: 12px;">'
+                    f'  {ts_html}'
+                    f'  {partial_spk_badge}'
+                    f'  <div style="margin-top: 6px; color: #9CA3AF; font-style: italic; font-size: 15px;">{p_text}...</div>'
+                    f'</div>'
+                )
+                html_parts.append(partial_line)
 
         # Assemble and set HTML
         joined_html = "\n".join(html_parts)
@@ -297,111 +352,158 @@ class TranscriptionEditor(QWidget):
         container_layout.setContentsMargins(0, 0, 0, 0)
         container_layout.setSpacing(0)
         
-        # 1. Build Formatter Toolbar
-        self.toolbar_widget = QWidget()
-        self.toolbar_widget.setStyleSheet("""
-            QWidget {
-                background-color: #F9FAFB;
-                border-bottom: 1px solid #E5E7EB;
-                padding: 4px 8px;
-            }
+        # ── Shared button style used throughout the toolbar ────────────
+        _btn_style = """
             QToolButton {
-                background-color: #FFFFFF;
-                border: 1px solid #D1D5DB;
+                background-color: transparent;
+                border: 1px solid transparent;
                 border-radius: 6px;
-                color: #111827;
-                padding: 4px 8px;
+                color: #374151;
+                font-size: 13px;
                 font-weight: 500;
-                font-size: 12px;
-                margin: 2px;
+                padding: 0px;
             }
             QToolButton:hover {
                 background-color: #F3F4F6;
-                border-color: #9CA3AF;
+                border-color: #E5E7EB;
+                color: #111827;
+            }
+            QToolButton:pressed {
+                background-color: #E5E7EB;
             }
             QToolButton:checked {
                 background-color: #FFE4E6;
-                border-color: #FF6FA3;
+                border-color: #FFADC5;
                 color: #FF6FA3;
             }
-            QComboBox {
-                background-color: #FFFFFF;
-                border: 1px solid #D1D5DB;
-                border-radius: 6px;
-                color: #111827;
-                padding: 2px 6px;
-                font-size: 12px;
-                min-height: 24px;
-                min-width: 85px;
+            QToolButton:checked:hover {
+                background-color: #FFCCD8;
+                border-color: #FF6FA3;
             }
-            QComboBox QAbstractItemView {
-                background-color: #FFFFFF;
-                border: 1px solid #D1D5DB;
-                selection-background-color: #FFE4E6;
-                selection-color: #FF6FA3;
+        """
+        
+        # ── 1. Build Formatter Toolbar ─────────────────────────────────
+        self.toolbar_widget = QWidget()
+        # Warm gradient background matching the app's neutral-pink palette
+        self.toolbar_widget.setStyleSheet("""
+            QWidget#toolbarWidget {
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #FFF5F7,
+                    stop:0.5 #FAF9FB,
+                    stop:1 #F6F7F9
+                );
+                border-bottom: 1px solid #EAD8DD;
+            }
+            QToolButton {
+                background-color: transparent;
+                border: 1px solid transparent;
+                border-radius: 6px;
+                color: #374151;
+                font-size: 13px;
+                font-weight: 500;
+                padding: 0px;
+            }
+            QToolButton:hover {
+                background-color: #F3F4F6;
+                border-color: #E5E7EB;
                 color: #111827;
-                outline: none;
+            }
+            QToolButton:pressed {
+                background-color: #E5E7EB;
+            }
+            QToolButton:checked {
+                background-color: #FFE4E6;
+                border-color: #FFADC5;
+                color: #FF6FA3;
+            }
+            QToolButton:checked:hover {
+                background-color: #FFCCD8;
+                border-color: #FF6FA3;
+            }
+            QComboBox {
+                min-height: 30px;
             }
         """)
+        self.toolbar_widget.setObjectName("toolbarWidget")
         
         toolbar_layout = QHBoxLayout(self.toolbar_widget)
-        toolbar_layout.setContentsMargins(4, 2, 4, 2)
-        toolbar_layout.setSpacing(4)
+        toolbar_layout.setContentsMargins(10, 6, 10, 6)
+        toolbar_layout.setSpacing(2)
         
-        # Undo/Redo
+        # ── Undo / Redo group ──────────────────────────────────────────
         self.undo_btn = QToolButton()
-        self.undo_btn.setText("↶")
+        self.undo_btn.setText("\u21B6")   # ↶  clockwise arrow
+        self.undo_btn.setFixedSize(30, 30)
         self.undo_btn.setToolTip("Undo (Ctrl+Z)")
         self.undo_btn.clicked.connect(self._undo)
         
         self.redo_btn = QToolButton()
-        self.redo_btn.setText("↷")
+        self.redo_btn.setText("\u21B7")   # ↷
+        self.redo_btn.setFixedSize(30, 30)
         self.redo_btn.setToolTip("Redo (Ctrl+Y)")
         self.redo_btn.clicked.connect(self._redo)
         
-        toolbar_layout.addWidget(self.undo_btn)
-        toolbar_layout.addWidget(self.redo_btn)
+        toolbar_layout.addWidget(self._btn_group([self.undo_btn, self.redo_btn]))
         toolbar_layout.addWidget(self._create_separator())
         
-        # Formatting Style
+        # ── Bold / Italic / Underline group ───────────────────────────
         self.bold_btn = QToolButton()
         self.bold_btn.setText("B")
         self.bold_btn.setCheckable(True)
-        self.bold_btn.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        self.bold_btn.setFixedSize(30, 30)
+        self.bold_btn.setFont(QFont("Segoe UI", 10, QFont.Bold))
         self.bold_btn.setToolTip("Bold (Ctrl+B)")
         self.bold_btn.clicked.connect(self._toggle_bold)
         
         self.italic_btn = QToolButton()
         self.italic_btn.setText("I")
         self.italic_btn.setCheckable(True)
-        self.italic_btn.setFont(QFont("Segoe UI", 9, QFont.Normal, True))
+        self.italic_btn.setFixedSize(30, 30)
+        self.italic_btn.setFont(QFont("Segoe UI", 10, QFont.Normal, True))
         self.italic_btn.setToolTip("Italic (Ctrl+I)")
         self.italic_btn.clicked.connect(self._toggle_italic)
         
         self.underline_btn = QToolButton()
         self.underline_btn.setText("U")
         self.underline_btn.setCheckable(True)
-        u_font = QFont("Segoe UI", 9)
+        self.underline_btn.setFixedSize(30, 30)
+        u_font = QFont("Segoe UI", 10)
         u_font.setUnderline(True)
         self.underline_btn.setFont(u_font)
         self.underline_btn.setToolTip("Underline (Ctrl+U)")
         self.underline_btn.clicked.connect(self._toggle_underline)
         
-        toolbar_layout.addWidget(self.bold_btn)
-        toolbar_layout.addWidget(self.italic_btn)
-        toolbar_layout.addWidget(self.underline_btn)
+        toolbar_layout.addWidget(self._btn_group([self.bold_btn, self.italic_btn, self.underline_btn]))
         toolbar_layout.addWidget(self._create_separator())
         
-        # Formatting Tags Dropdown
+        # ── Tag dropdown — brand-pink accent button ────────────────────
         self.tag_btn = QToolButton()
-        self.tag_btn.setText("🏷️ Tag Selection")
+        self.tag_btn.setText("\U0001F3F7  Tag")
         self.tag_btn.setToolTip("Apply Tag Highlight to selected text")
-        self.tag_btn.setMinimumWidth(150)
+        self.tag_btn.setFixedHeight(30)
+        self.tag_btn.setMinimumWidth(80)
+        self.tag_btn.setStyleSheet("""
+            QToolButton {
+                background-color: #FF6FA3;
+                border: 1px solid #FF6FA3;
+                border-radius: 6px;
+                color: #FFFFFF;
+                font-size: 12px;
+                font-weight: 600;
+                padding: 0px 10px;
+            }
+            QToolButton:hover {
+                background-color: #FF4A8B;
+                border-color: #FF4A8B;
+            }
+            QToolButton:pressed {
+                background-color: #E63C78;
+            }
+            QToolButton::menu-indicator { image: none; }
+        """)
 
-        tag_menu = QMenu(self)
-        # QMenu popups do NOT inherit the parent widget stylesheet on Windows;
-        # they must be styled explicitly to avoid falling back to the system dark theme.
-        tag_menu.setStyleSheet("""
+        _menu_ss = """
             QMenu {
                 background-color: #FFFFFF;
                 border: 1px solid #E5E7EB;
@@ -425,85 +527,118 @@ class TranscriptionEditor(QWidget):
                 background: #E5E7EB;
                 margin: 4px 8px;
             }
-        """)
-
-        act_item = tag_menu.addAction("✅  Action Item")
+        """
+        tag_menu = QMenu(self)
+        tag_menu.setStyleSheet(_menu_ss)
+        act_item = tag_menu.addAction("\u2705  Action Item")
         act_item.triggered.connect(lambda: self._apply_tag("Action Item", "#D1FAE5", "#0F7A75"))
-        act_quote = tag_menu.addAction("💬  Quote")
+        act_quote = tag_menu.addAction("\U0001F4AC  Quote")
         act_quote.triggered.connect(lambda: self._apply_tag("Quote", "#F3E8FF", "#7C3AED"))
-        act_sensitive = tag_menu.addAction("🔴  Sensitive")
+        act_sensitive = tag_menu.addAction("\U0001F534  Sensitive")
         act_sensitive.triggered.connect(lambda: self._apply_tag("Sensitive", "#FEE2E2", "#E02424"))
-
         self.tag_btn.setMenu(tag_menu)
         self.tag_btn.setPopupMode(QToolButton.InstantPopup)
         toolbar_layout.addWidget(self.tag_btn)
         toolbar_layout.addWidget(self._create_separator())
         
-        # Alignments
+        # ── Alignment group ────────────────────────────────────────────
         self.align_left = QToolButton()
-        self.align_left.setText("▤")
+        self.align_left.setText("\u2261")     # ≡ left-align lines
         self.align_left.setCheckable(True)
+        self.align_left.setFixedSize(30, 30)
+        self.align_left.setToolTip("Align Left")
         self.align_left.clicked.connect(lambda: self._set_alignment(Qt.AlignLeft))
+
         self.align_center = QToolButton()
-        self.align_center.setText("☲")
+        self.align_center.setText("\u2A76")   # centred lines representation
         self.align_center.setCheckable(True)
+        self.align_center.setFixedSize(30, 30)
+        self.align_center.setToolTip("Align Centre")
         self.align_center.clicked.connect(lambda: self._set_alignment(Qt.AlignHCenter))
+
         self.align_right = QToolButton()
-        self.align_right.setText("▥")
+        self.align_right.setText("\u2262")    # right-align
         self.align_right.setCheckable(True)
+        self.align_right.setFixedSize(30, 30)
+        self.align_right.setToolTip("Align Right")
         self.align_right.clicked.connect(lambda: self._set_alignment(Qt.AlignRight))
+
         self.align_justify = QToolButton()
-        self.align_justify.setText("≣")
+        self.align_justify.setText("\u2630")  # ☰ justify
         self.align_justify.setCheckable(True)
+        self.align_justify.setFixedSize(30, 30)
+        self.align_justify.setToolTip("Justify")
         self.align_justify.clicked.connect(lambda: self._set_alignment(Qt.AlignJustify))
         
-        toolbar_layout.addWidget(self.align_left)
-        toolbar_layout.addWidget(self.align_center)
-        toolbar_layout.addWidget(self.align_right)
-        toolbar_layout.addWidget(self.align_justify)
+        toolbar_layout.addWidget(self._btn_group([
+            self.align_left, self.align_center, self.align_right, self.align_justify
+        ]))
         toolbar_layout.addWidget(self._create_separator())
         
-        # Font Options
+        # ── Font family + size combos ──────────────────────────────────
         self.font_combo = QComboBox()
         self.font_combo.addItems(["Segoe UI", "Inter", "Arial", "Consolas", "Georgia", "Impact"])
-        self.font_combo.setMinimumWidth(130)
+        self.font_combo.setMinimumWidth(120)
+        self.font_combo.setFixedHeight(30)
         self.font_combo.setToolTip("Font Family")
         self.font_combo.currentTextChanged.connect(self._change_font_family)
         
         self.size_combo = QComboBox()
         self.size_combo.addItems(["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28", "36", "48"])
         self.size_combo.setCurrentText("14")
-        self.size_combo.setMinimumWidth(85)
+        self.size_combo.setMinimumWidth(60)
+        self.size_combo.setFixedHeight(30)
         self.size_combo.setToolTip("Font Size")
         self.size_combo.currentTextChanged.connect(self._change_font_size)
         
         toolbar_layout.addWidget(self.font_combo)
+        toolbar_layout.addSpacing(4)
         toolbar_layout.addWidget(self.size_combo)
         toolbar_layout.addWidget(self._create_separator())
         
-        # Colors
+        # ── Colour picker ──────────────────────────────────────────────
         self.color_btn = QToolButton()
-        self.color_btn.setText("🎨")
-        self.color_btn.setToolTip("Color Picker")
+        self.color_btn.setText("A")
+        self.color_btn.setFixedSize(30, 30)
+        self.color_btn.setToolTip("Text Colour")
+        # Style the A with a coloured underline to signal colour-picking
+        self.color_btn.setStyleSheet("""
+            QToolButton {
+                background-color: transparent;
+                border: 1px solid transparent;
+                border-radius: 6px;
+                color: #374151;
+                font-size: 13px;
+                font-weight: 700;
+                text-decoration: underline;
+                text-decoration-color: #FF6FA3;
+                padding: 0px;
+            }
+            QToolButton:hover {
+                background-color: #FFE4E6;
+                border-color: #FFADC5;
+                color: #FF6FA3;
+            }
+            QToolButton:pressed { background-color: #FFCCD8; }
+        """)
         self.color_btn.clicked.connect(self._choose_color)
         toolbar_layout.addWidget(self.color_btn)
         
         toolbar_layout.addStretch()
 
-        # Wrap the toolbar in a horizontal QScrollArea so narrow windows can scroll
-        # rather than forcing a rigid minimum width that breaks resize.
+        # Wrap toolbar in a horizontal QScrollArea (narrow-window safety)
         toolbar_scroll = QScrollArea()
         toolbar_scroll.setWidget(self.toolbar_widget)
         toolbar_scroll.setWidgetResizable(True)
         toolbar_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         toolbar_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        toolbar_scroll.setFixedHeight(48)
+        toolbar_scroll.setFixedHeight(54)
         toolbar_scroll.setFrameShape(QFrame.NoFrame)
         toolbar_scroll.setStyleSheet("""
             QScrollArea { background: transparent; border: none; }
             QScrollBar:horizontal {
-                height: 4px;
-                background: #F9FAFB;
+                height: 3px;
+                background: transparent;
             }
             QScrollBar::handle:horizontal {
                 background: #FFB3CA;
@@ -514,107 +649,124 @@ class TranscriptionEditor(QWidget):
         """)
         container_layout.addWidget(toolbar_scroll)
         
-        # 2. Build Sticky Search and Filters Bar
+        # ── 2. Build Sticky Search and Filters Bar ─────────────────────
         self.search_widget = QWidget()
+        self.search_widget.setObjectName("searchWidget")
         self.search_widget.setStyleSheet("""
-            QWidget {
-                background-color: #FFFFFF;
-                border-bottom: 1px solid #E5E7EB;
-                padding: 4px 12px;
+            QWidget#searchWidget {
+                background-color: #FAFAFA;
+                border-bottom: 1px solid #EAD8DD;
             }
             QLineEdit {
-                background-color: #F3F4F6;
-                border: 1px solid #D1D5DB;
-                border-radius: 6px;
-                padding: 4px 8px;
+                background-color: #FFFFFF;
+                border: 1.5px solid #E5E7EB;
+                border-radius: 8px;
+                padding: 0px 10px 0px 32px;
                 font-size: 12px;
-                color: #111827;
+                font-family: 'Segoe UI', 'Inter', sans-serif;
+                color: #374151;
+                min-height: 30px;
+            }
+            QLineEdit:hover {
+                border-color: #FFADC5;
+            }
+            QLineEdit:focus {
+                border-color: #FF6FA3;
+                background-color: #FFFFFF;
             }
             QComboBox {
-                background-color: #FFFFFF;
-                border: 1px solid #D1D5DB;
-                border-radius: 6px;
-                color: #111827;
-                padding: 2px 8px;
-                font-size: 12px;
+                min-height: 30px;
                 min-width: 110px;
-                min-height: 24px;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #FFFFFF;
-                border: 1px solid #D1D5DB;
-                selection-background-color: #FFE4E6;
-                selection-color: #FF6FA3;
-                color: #111827;
-                outline: none;
-            }
-            QPushButton {
-                background-color: #FFFFFF;
-                border: 1px solid #D1D5DB;
-                border-radius: 6px;
-                padding: 4px 8px;
-                font-size: 11px;
-                font-weight: 500;
-            }
-            QPushButton:checked {
-                background-color: #FFE4E6;
-                border-color: #FF6FA3;
-                color: #FF6FA3;
             }
         """)
         
         search_layout = QHBoxLayout(self.search_widget)
-        search_layout.setContentsMargins(4, 2, 4, 2)
-        search_layout.setSpacing(6)
+        search_layout.setContentsMargins(10, 6, 10, 6)
+        search_layout.setSpacing(8)
         
-        # Search input (with regex notice)
+        # Search input wrapped in a relative container with a leading icon label
+        search_container = QWidget()
+        search_container.setStyleSheet("background: transparent;")
+        search_container_layout = QHBoxLayout(search_container)
+        search_container_layout.setContentsMargins(0, 0, 0, 0)
+        search_container_layout.setSpacing(0)
+
+        # Overlay magnifier label — absolutely positioned via a frame trick
+        self._search_icon_label = QLabel("\U0001F50D", search_container)
+        self._search_icon_label.setStyleSheet(
+            "font-size: 13px; color: #9CA3AF; background: transparent;"
+        )
+        self._search_icon_label.setFixedSize(28, 30)
+        self._search_icon_label.setAlignment(Qt.AlignCenter)
+        
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search transcript... (regex support, e.g. /word1|word2/i)")
+        self.search_input.setPlaceholderText("Search transcript… (regex: /word1|word2/i)")
         self.search_input.textChanged.connect(self._apply_filters)
-        search_layout.addWidget(self.search_input)
+        search_container_layout.addWidget(self.search_input)
+        search_layout.addWidget(search_container, stretch=1)
         
-        # Speaker filter dropdown
+        # Speaker filter
         self.speaker_filter = QComboBox()
-        self.speaker_filter.addItem("All Speakers")
-        self.speaker_filter.addItem("Speaker 1")
-        self.speaker_filter.addItem("Speaker 2")
-        self.speaker_filter.addItem("Speaker 3")
-        self.speaker_filter.addItem("Speaker 4")
-        self.speaker_filter.setMinimumWidth(130)
+        self.speaker_filter.addItems(["All Speakers", "Speaker 1", "Speaker 2", "Speaker 3", "Speaker 4"])
+        self.speaker_filter.setMinimumWidth(120)
         self.speaker_filter.setToolTip("Filter by Speaker")
         self.speaker_filter.currentTextChanged.connect(self._apply_filters)
         search_layout.addWidget(self.speaker_filter)
         
-        # Tag filter dropdown
+        # Tag filter
         self.tag_filter = QComboBox()
-        self.tag_filter.addItem("All Tags")
-        self.tag_filter.addItem("Action Item")
-        self.tag_filter.addItem("Quote")
-        self.tag_filter.addItem("Sensitive")
-        self.tag_filter.setMinimumWidth(120)
+        self.tag_filter.addItems(["All Tags", "Action Item", "Quote", "Sensitive"])
+        self.tag_filter.setMinimumWidth(100)
         self.tag_filter.setToolTip("Filter by Tag")
         self.tag_filter.currentTextChanged.connect(self._apply_filters)
         search_layout.addWidget(self.tag_filter)
         
-        # Review Mode toggle
-        self.review_btn = QPushButton("Review Mode (Tags Only)")
+        # Review Mode pill toggle — teal accent when active
+        self.review_btn = QPushButton("\U0001F4CB  Review Mode")
         self.review_btn.setCheckable(True)
+        self.review_btn.setFixedHeight(30)
+        self.review_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                border: 1.5px solid #E5E7EB;
+                border-radius: 15px;
+                padding: 0px 14px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #6B7280;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                border-color: #0F7A75;
+                color: #0F7A75;
+                background-color: #E6F4F2;
+            }
+            QPushButton:checked {
+                background-color: #0F7A75;
+                border-color: #0F7A75;
+                color: #FFFFFF;
+            }
+            QPushButton:checked:hover {
+                background-color: #0C615D;
+                border-color: #0C615D;
+            }
+        """)
         self.review_btn.clicked.connect(self._apply_filters)
         search_layout.addWidget(self.review_btn)
         
-        # Wrap the search bar in a horizontal QScrollArea too for the same reason.
+        # Wrap search bar in QScrollArea (narrow-window safety)
         search_scroll = QScrollArea()
         search_scroll.setWidget(self.search_widget)
         search_scroll.setWidgetResizable(True)
         search_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         search_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        search_scroll.setFixedHeight(44)
+        search_scroll.setFixedHeight(50)
         search_scroll.setFrameShape(QFrame.NoFrame)
         search_scroll.setStyleSheet("""
             QScrollArea { background: transparent; border: none; }
             QScrollBar:horizontal {
-                height: 4px;
-                background: #FFFFFF;
+                height: 3px;
+                background: transparent;
             }
             QScrollBar::handle:horizontal {
                 background: #FFB3CA;
@@ -624,6 +776,9 @@ class TranscriptionEditor(QWidget):
             QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
         """)
         container_layout.addWidget(search_scroll)
+
+        # Position the magnifier icon overlay after layout is settled
+        self.search_input.installEventFilter(self)
         
         # 3. Text Editor
         self.text_edit = TranscriptionTextEdit()
@@ -641,11 +796,43 @@ class TranscriptionEditor(QWidget):
         self.text_edit.split_segment_requested.connect(self.split_segment_requested.emit)
 
     def _create_separator(self) -> QFrame:
+        """Thin vertical divider between toolbar groups."""
         line = QFrame()
         line.setFrameShape(QFrame.VLine)
-        line.setFrameShadow(QFrame.Sunken)
-        line.setStyleSheet("background-color: #E5E7EB; width: 1px; margin: 2px 4px;")
+        line.setFrameShadow(QFrame.Plain)
+        line.setFixedWidth(1)
+        line.setStyleSheet(
+            "background-color: #E2DCE6; margin: 8px 6px;"
+        )
         return line
+
+    def _btn_group(self, buttons: list) -> QWidget:
+        """Wrap a list of QToolButtons in a lightly-tinted pill container for visual grouping."""
+        group = QWidget()
+        group.setStyleSheet("""
+            QWidget {
+                background-color: rgba(255, 255, 255, 0.70);
+                border: 1px solid #EAD8DD;
+                border-radius: 8px;
+            }
+        """)
+        row = QHBoxLayout(group)
+        row.setContentsMargins(3, 3, 3, 3)
+        row.setSpacing(1)
+        for btn in buttons:
+            row.addWidget(btn)
+        return group
+
+    def eventFilter(self, obj, event) -> bool:
+        """Reposition the search magnifier overlay whenever the search input resizes or shows."""
+        from PySide6.QtCore import QEvent
+        if obj is self.search_input and event.type() in (QEvent.Resize, QEvent.Show):
+            # The icon is a child of search_container; position it at the left edge, vertically centred
+            h = self.search_input.height()
+            icon_h = self._search_icon_label.height()
+            self._search_icon_label.move(0, max(0, (h - icon_h) // 2))
+            self._search_icon_label.raise_()
+        return super().eventFilter(obj, event)
 
     def _apply_filters(self) -> None:
         """Gathers filter inputs and propagates to the custom text edit view."""
